@@ -61,18 +61,27 @@ module.exports.newUser = (req, res, next) => {
     });
 };
 
-// eslint-disable-next-line max-len
-module.exports.updateCurrentUser = (req, res, next) => User.findByIdAndUpdate(req.user._id, req.body, { new: true })
-  .then((user) => {
-    if (!user) {
-      throw new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`);
-    }
-    return res.status(200).send(user);
-  })
-  .catch((err) => {
-    if (err.name === 'ReferenceError') {
-      throw new BadRequestError('Переданы некорректные данные при обновлении профиля');
-    } else {
-      next(err);
-    }
-  });
+module.exports.updateCurrentUser = (req, res, next) => {
+  const { name, email } = req.body;
+
+  return User.findOne({ email })
+    .then((user) => {
+      if (user) {
+        throw new ConflictError('Данный email уже существует');
+      }
+      return User.findByIdAndUpdate(req.user._id, { name, email }, { new: true })
+        .then((data) => {
+          if (!data) {
+            throw new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`);
+          }
+          return res.status(200).send(data);
+        });
+    })
+    .catch((err) => {
+      if (err.name === 'ReferenceError') {
+        throw new BadRequestError('Переданы некорректные данные при обновлении профиля');
+      } else {
+        next(err);
+      }
+    });
+};
