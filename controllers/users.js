@@ -24,13 +24,13 @@ module.exports.logout = (req, res) => res.clearCookie('jwt').status(200).send({ 
 module.exports.getCurrentUser = (req, res, next) => User.findById(req.user._id)
   .then((user) => {
     if (!user) {
-      throw new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`);
+      next(new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`));
     }
     return res.status(200).send(user);
   })
   .catch((err) => {
     if (err.name === 'CastError') {
-      throw new BadRequestError('Переданы некорректные данные для поиска пользователя');
+      next(new BadRequestError('Переданы некорректные данные для поиска пользователя'));
     } else {
       next(err);
     }
@@ -42,7 +42,7 @@ module.exports.newUser = (req, res, next) => {
   return User.findOne({ email })
     .then((user) => {
       if (user) {
-        throw new ConflictError('Данный email уже существует');
+        next(new ConflictError('Данный email уже существует'));
       }
       return bcrypt.hash(password, saltRounds, (err, hash) => {
         if (err) {
@@ -54,7 +54,7 @@ module.exports.newUser = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequestError('Переданы некорректные данные при создании пользователя');
+        next(new BadRequestError('Переданы некорректные данные при создании пользователя'));
       } else {
         next(err);
       }
@@ -67,19 +67,19 @@ module.exports.updateCurrentUser = (req, res, next) => {
   return User.findOne({ email })
     .then((user) => {
       if (user) {
-        throw new ConflictError('Данный email уже существует');
+        next(new ConflictError('Данный email уже существует'));
       }
       return User.findByIdAndUpdate(req.user._id, { name, email }, { new: true })
         .then((data) => {
           if (!data) {
-            throw new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`);
+            next(new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`));
           }
           return res.status(200).send(data);
         });
     })
     .catch((err) => {
       if (err.name === 'ReferenceError') {
-        throw new BadRequestError('Переданы некорректные данные при обновлении профиля');
+        next(new BadRequestError('Переданы некорректные данные при обновлении профиля'));
       } else {
         next(err);
       }
