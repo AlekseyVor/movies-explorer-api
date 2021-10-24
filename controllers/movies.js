@@ -9,17 +9,27 @@ module.exports.getMovies = (req, res, next) => {
     .catch(next);
 };
 
-module.exports.postMovie = (req, res, next) => Movie.create(req.body)
-  .then((newMovie) => {
-    Movie.findById(newMovie._id)
-      .then((movie) => res.status(200).send(movie));
+module.exports.postMovie = (req, res, next) => {
+  const {
+    // eslint-disable-next-line max-len
+    country, director, duration, year, description, image, trailer, thumbnail, movieId, nameRU, nameEN, 
+  } = req.body;
+
+  Movie.create({
+    // eslint-disable-next-line max-len
+    country, director, duration, year, description, image, trailer, thumbnail, movieId, nameRU, nameEN, owner: req.user._id, 
   })
-  .catch((err) => {
-    if (err.name === 'ValidationError') {
-      throw new BadRequestError('Переданы некорректные данные при создании карточки');
-    }
-    next(err);
-  });
+    .then((newMovie) => {
+      Movie.findById(newMovie._id)
+        .then((movie) => res.status(200).send(movie));
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        throw new BadRequestError('Переданы некорректные данные при создании карточки');
+      }
+      next(err);
+    });
+};
 
 module.exports.deleteMovie = (req, res, next) => {
   Movie.findById(req.params.movieId)

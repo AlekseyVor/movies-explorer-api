@@ -4,6 +4,7 @@ const User = require('../models/user');
 const NotFoundError = require('../errors/not-found-error');
 const BadRequestError = require('../errors/bad-request-error');
 const ConflictError = require('../errors/conflict-error');
+const UnauthorizedError = require('../errors/unauthorized-error');
 
 const saltRounds = 10;
 const { NODE_ENV, JWT_SECRET } = process.env;
@@ -14,10 +15,12 @@ module.exports.login = (req, res, next) => {
   return User.findUserByCredentials(email, password)
     .then((user) => {
       const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret', { expiresIn: '7d' });
-      res.send({ token });
+      res.cookie('jwt', token, { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, secure: process.env.NODE_ENV === 'production' }).status(200).send({ message: 'Logged in succesfully' });
     })
     .catch(next);
 };
+
+module.exports.logout = (req, res) => res.clearCookie('jwt').status(200).send({ message: 'Logged out succesfully' });
 
 module.exports.getCurrentUser = (req, res, next) => User.findById(req.user._id)
   .then((user) => {

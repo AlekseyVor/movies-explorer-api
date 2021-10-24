@@ -6,7 +6,7 @@ const { errors, celebrate, Joi } = require('celebrate');
 // const cors = require('cors');
 const validator = require('validator');
 const auth = require('./middlewares/auth');
-const { login, newUser } = require('./controllers/users');
+const { login, newUser, logout } = require('./controllers/users');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 
 const { PORT = 3000 } = process.env;
@@ -64,6 +64,7 @@ app.use(requestLogger);
      password: Joi.string().required().min(8),
    }),
  }), newUser);
+app.post('/signout', auth, logout);
 app.use('/movies', auth, require('./routes/movies'));
 app.use('/users', auth, require('./routes/users'));
 
