@@ -4,12 +4,11 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
-
 const { errors } = require('celebrate');
 const cors = require('cors');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 
-const { PORT = 3000 } = process.env;
+const { PORT = 3000, SERVER } = process.env;
 
 const app = express();
 
@@ -28,7 +27,7 @@ const corsOptions = {
   credentials: true,
 };
 
-mongoose.connect('mongodb://localhost:27017/moviesdb');
+mongoose.connect(process.env.NODE_ENV !== 'production' ? 'mongodb://localhost:27017/moviesdb' : SERVER);
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(cookieParser());
@@ -49,14 +48,6 @@ require('./routes/index')(app);
 app.use(errorLogger);
 app.use(errors());
 
-app.use((err, req, res, next) => {
-  const { statusCode = 500, message } = err;
-  res.status(statusCode).send({
-    message: statusCode === 500
-      ? 'На сервере произошла ошибка'
-      : message,
-  });
-  next();
-});
+require('./middlewares/errorhandler')(app);
 
 app.listen(PORT);

@@ -7,7 +7,6 @@ const handleAuthError = () => {
   throw new UnauthorizedError('Необходима авторизация');
 };
 
-// eslint-disable-next-line consistent-return
 module.exports = (req, res, next) => {
   const token = req.cookies.jwt;
 
@@ -26,4 +25,6 @@ module.exports = (req, res, next) => {
   req.user = payload; // записываем пейлоуд в объект запроса
 
   next(); // пропускаем запрос дальше
+
+  return req.user;
 };
