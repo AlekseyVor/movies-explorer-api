@@ -1,0 +1,85 @@
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const User = require('../models/user');
+const NotFoundError = require('../errors/not-found-error');
+const BadRequestError = require('../errors/bad-request-error');
+const ConflictError = require('../errors/conflict-error');
+
+const saltRounds = 10;
+const { NODE_ENV, JWT_SECRET } = process.env;
+
+module.exports.login = (req, res, next) => {
+  const { email, password } = req.body;
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret', { expiresIn: '7d' });
+      res.cookie('jwt', token, { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, secure: process.env.NODE_ENV === 'production' }).status(200).send({ message: 'Logged in succesfully' });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+module.exports.logout = (req, res) => res.clearCookie('jwt').status(200).send({ message: 'Logged out succesfully' });
+
+module.exports.getCurrentUser = (req, res, next) => User.findById(req.user._id)
+  .then((user) => {
+    if (!user) {
+      next(new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`));
+    }
+    return res.send(user);
+  })
+  .catch((err) => {
+    next(err);
+  });
+
+module.exports.newUser = (req, res, next) => {
+  const { name, email, password } = req.body;
+
+  return User.findOne({ email })
+    .then((user) => {
+      if (user) {
+        next(new ConflictError('Данный email уже существует'));
+      }
+      return bcrypt.hash(password, saltRounds, (err, hash) => {
+        if (err) {
+          next(err);
+        }
+        return User.create({ name, email, password: hash })
+          .then((newUser) => res.send({ message: `Создан пользователь с email ${newUser.email}` }));
+      });
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(new BadRequestError('Переданы некорректные данные при создании пользователя'));
+      } else {
+        next(err);
+      }
+    });
+};
+
+module.exports.updateCurrentUser = (req, res, next) => {
+  const { name, email } = req.body;
+
+  return User.findOne({ email })
+    .then((user) => {
+      if (user) {
+        next(new ConflictError('Данный email уже существует'));
+      }
+      return User.findByIdAndUpdate(req.user._id, { name, email }, { new: true })
+        .then((data) => {
+          if (!data) {
+            next(new NotFoundError(`Пользователь по указанному id:${req.user_id} не найден`));
+          }
+          return res.send(data);
+        });
+    })
+    .catch((err) => {
+      if (err.name === 'ReferenceError') {
+        next(new BadRequestError('Переданы некорректные данные при обновлении профиля'));
+      } else {
+        next(err);
+      }
+    });
+};
